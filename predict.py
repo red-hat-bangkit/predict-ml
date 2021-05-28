@@ -21,10 +21,10 @@ def gsheet_to_csv(url: str):
   csv = sheet_url.replace('/edit#gid=', '/export?format=csv&gid=')
   return csv
 
-df_telemetri_rainfall = pd.read_csv(gsheet_to_csv("https://docs.google.com/spreadsheets/d/1nI8m27noE1mMiXQXde8jyXD6-qhuMQ2tE-gXxBkuxi4/edit#gid=0"))
+df_telemetri_rainfall = pd.read_csv("TelemetriRainfall.csv")
 df_telemetri_rainfall
 
-df_telemetri_waterlevel = pd.read_csv(gsheet_to_csv("https://docs.google.com/spreadsheets/d/1xy16th0oBqQ9kux8XGKmkk6AO1flGq1hj1kYqDLn4YI/edit#gid=0"))
+df_telemetri_waterlevel = pd.read_csv("TelemetriWaterLevel.csv")
 df_telemetri_waterlevel.rename(columns = {'Water Level (cm)': 'water_level', 'Date ':'Date'}, inplace = True)
 df_telemetri_waterlevel
 
@@ -165,13 +165,13 @@ water_level_value_replacement
 # There is high spikes (probably measurement error)
 max_idx = ds_tmrain_tmwater_waterlevel[ds_tmrain_tmwater_waterlevel == ds_tmrain_tmwater_waterlevel.max()].index[0]
 ds_tmrain_tmwater_waterlevel[max_idx] = water_level_value_replacement
-ds_tmrain_tmwater_waterlevel.plot()
+# ds_tmrain_tmwater_waterlevel.plot()
 
 # Let's also replace missing value (-1) there
 ds_tmrain_tmwater_waterlevel[ds_tmrain_tmwater_waterlevel == -1] = water_level_value_replacement
-ds_tmrain_tmwater_waterlevel.plot()
+# ds_tmrain_tmwater_waterlevel.plot()
 
-ds_tmrain_tmwater_rainfall.plot()
+# ds_tmrain_tmwater_rainfall.plot()
 
 # Looks good, let's join to main df
 df_tmrain_tmwater["WaterLevel"] = ds_tmrain_tmwater_waterlevel
@@ -352,7 +352,7 @@ for location in locations:
   plt.plot(df["Date"],df['Rainfall'], color='red')
   plt.xlabel('Date', fontsize=18)
   plt.ylabel('Rainfall (mm)', fontsize=18)
-  plt.show()
+  # plt.show()
 
   # create new data frame with only 'Rainfall' column
   data = df[['Rainfall']]
@@ -400,8 +400,8 @@ for location in locations:
   plt.ylabel('Rainfall', fontsize=18)
   # plt.plot(train['Rainfall'], linewidth=3.5)
   plt.plot(df[trainning_data_len:]["Date"], valid[['Rainfall', 'Predictions']],  linewidth=3.5)
-  plt.legend(['Valid','Predictions'], loc='upper_center')
-  plt.show()
+  plt.legend(['Valid','Predictions'], loc='upper center')
+  # plt.show()
 
   pickle.dump(clf, open("models/mreg-predict-banjir-%s.pkl"%location, "wb"))
 
