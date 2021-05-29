@@ -14,6 +14,8 @@ Import Required Libraries
 import numpy as np
 import pandas as pd
 
+ENABLE_OUTPUT = False
+
 """## Telemetri Data"""
 
 def gsheet_to_csv(url: str):
@@ -22,11 +24,11 @@ def gsheet_to_csv(url: str):
   return csv
 
 df_telemetri_rainfall = pd.read_csv("TelemetriRainfall.csv")
-df_telemetri_rainfall
+if ENABLE_OUTPUT: df_telemetri_rainfall
 
-df_telemetri_waterlevel = pd.read_csv("TelemetriWaterLevel.csv")
+df_telemetri_waterlevel = pd.read_csv("TelemetriWaterlevel.csv")
 df_telemetri_waterlevel.rename(columns = {'Water Level (cm)': 'water_level', 'Date ':'Date'}, inplace = True)
-df_telemetri_waterlevel
+if ENABLE_OUTPUT: df_telemetri_waterlevel
 
 # Pandas Left Join is Out of Memory
 # pd.merge(df_telemetri_rainfall, df_telemetri_waterlevel, how="left", on="Location")
@@ -40,15 +42,16 @@ Let's try to use sql instead
 """
 
 from sqlalchemy import create_engine
-engine = create_engine('sqlite:///./db.sqlite3', echo=False)
+engine = create_engine('sqlite://', echo=False)
 
 # Save to sql
 df_telemetri_waterlevel.to_sql("telemetri_waterlevel", if_exists="replace", con=engine)
 df_telemetri_rainfall.to_sql("telemetri_rainfall", if_exists="replace", con=engine)
 
 # check length
-print(len(df_telemetri_rainfall))
-print(len(df_telemetri_waterlevel))
+if ENABLE_OUTPUT:
+  print(len(df_telemetri_rainfall))
+  print(len(df_telemetri_waterlevel))
 
 """Join operations ini untuk menggabungkan data dengan cara mengambil semua data yang memiliki nilai **water_level** dan **Rainfall** (jika ada label data banjir dari PUPR)
 ```
@@ -105,18 +108,18 @@ ON tr.Location = tw.Location AND tr.Date = tw.Date AND tr.Time = tw.Time
 ''')
 df_tmrain_tmwater = pd.DataFrame(query.fetchall())
 df_tmrain_tmwater.columns = query.keys()
-df_tmrain_tmwater
+if ENABLE_OUTPUT: df_tmrain_tmwater
 
-df_tmrain_tmwater.describe()
+if ENABLE_OUTPUT: df_tmrain_tmwater.describe()
 
 """## Preprocessing Data
 
 Number of Missing Value
 """
 
-df_tmrain_tmwater.isnull().sum()
+if ENABLE_OUTPUT: df_tmrain_tmwater.isnull().sum()
 
-df_tmrain_tmwater['RainfallStatus'].unique()
+if ENABLE_OUTPUT: df_tmrain_tmwater['RainfallStatus'].unique()
 
 # Clean Column RainfallStatus
 df_tmrain_tmwater.loc[df_tmrain_tmwater['RainfallStatus']=='Cerah\\', 'RainfallStatus'] = "Cerah"
@@ -124,7 +127,7 @@ df_tmrain_tmwater.loc[df_tmrain_tmwater['RainfallStatus']=='Light', 'RainfallSta
 df_tmrain_tmwater.loc[df_tmrain_tmwater['RainfallStatus']=='Is', 'RainfallStatus'] = "Sedang"
 df_tmrain_tmwater.loc[df_tmrain_tmwater['RainfallStatus']=='Bright', 'RainfallStatus'] = "Cerah"
 df_tmrain_tmwater = df_tmrain_tmwater[df_tmrain_tmwater['RainfallStatus'].notna()]
-df_tmrain_tmwater['RainfallStatus'].unique()
+if ENABLE_OUTPUT: df_tmrain_tmwater['RainfallStatus'].unique()
 
 """### Data metrics defenition
 * Rainfall (mm)
@@ -135,7 +138,7 @@ df_tmrain_tmwater['RainfallStatus'].unique()
   Every square meter has one litre of water
 """
 
-df_tmrain_tmwater[df_tmrain_tmwater['WaterLevel'].notna()][df_tmrain_tmwater['RainfallStatus'] == "Lebat"]
+if ENABLE_OUTPUT: df_tmrain_tmwater[df_tmrain_tmwater['WaterLevel'].notna()][df_tmrain_tmwater['RainfallStatus'] == "Lebat"]
 
 # Convert metrics to float
 
@@ -157,26 +160,26 @@ def waterlevel_metric_to_float(metric):
 ds_tmrain_tmwater_rainfall = df_tmrain_tmwater.apply(lambda row: rainfall_metric_to_float(str(row["Rainfall"])), axis=1)
 ds_tmrain_tmwater_waterlevel = df_tmrain_tmwater.apply(lambda row: waterlevel_metric_to_float(str(row["WaterLevel"])), axis=1)
 
-ds_tmrain_tmwater_waterlevel.plot()
+if ENABLE_OUTPUT: ds_tmrain_tmwater_waterlevel.plot()
 
 water_level_value_replacement = ds_tmrain_tmwater_waterlevel[ds_tmrain_tmwater_waterlevel != -1].std()
-water_level_value_replacement
+if ENABLE_OUTPUT: water_level_value_replacement
 
 # There is high spikes (probably measurement error)
 max_idx = ds_tmrain_tmwater_waterlevel[ds_tmrain_tmwater_waterlevel == ds_tmrain_tmwater_waterlevel.max()].index[0]
 ds_tmrain_tmwater_waterlevel[max_idx] = water_level_value_replacement
-# ds_tmrain_tmwater_waterlevel.plot()
+if ENABLE_OUTPUT: ds_tmrain_tmwater_waterlevel.plot()
 
 # Let's also replace missing value (-1) there
 ds_tmrain_tmwater_waterlevel[ds_tmrain_tmwater_waterlevel == -1] = water_level_value_replacement
-# ds_tmrain_tmwater_waterlevel.plot()
+if ENABLE_OUTPUT: ds_tmrain_tmwater_waterlevel.plot()
 
-# ds_tmrain_tmwater_rainfall.plot()
+if ENABLE_OUTPUT: ds_tmrain_tmwater_rainfall.plot()
 
 # Looks good, let's join to main df
 df_tmrain_tmwater["WaterLevel"] = ds_tmrain_tmwater_waterlevel
 df_tmrain_tmwater["Rainfall"] = ds_tmrain_tmwater_rainfall
-df_tmrain_tmwater
+if ENABLE_OUTPUT: df_tmrain_tmwater
 
 from datetime import datetime
 def convert_to_datetime(date: str):
@@ -186,14 +189,14 @@ def convert_to_datetime(date: str):
     return datetime.strptime(date, '%d-%B-%y')
 
 df_tmrain_tmwater['Date'] = df_tmrain_tmwater.apply(lambda row: convert_to_datetime(row["Date"]), axis=1)
-df_tmrain_tmwater
+if ENABLE_OUTPUT: df_tmrain_tmwater
 
 # See if time is regularly updated
 
 import matplotlib.pyplot as plt
 plt.rcParams['figure.figsize'] = [20, 10]
 
-df_tmrain_tmwater[df_tmrain_tmwater["Location"] == "Sumur Batu"].plot("Date", "Time", kind="scatter", s=1)
+if ENABLE_OUTPUT: df_tmrain_tmwater[df_tmrain_tmwater["Location"] == "Sumur Batu"].plot("Date", "Time", kind="scatter", s=1)
 
 """There are many missing values! (Not regular)
 
@@ -201,25 +204,27 @@ Let's just take by date and not by time
 """
 
 df_tmrain_tmwater_days = df_tmrain_tmwater.sort_values("Rainfall", ascending=False).groupby(["Location", "Date"]).head(1)
-df_tmrain_tmwater_days
+if ENABLE_OUTPUT: df_tmrain_tmwater_days
 
 # Asumsi Labeling
 df_tmrain_tmwater_days['Banjir'] = df_tmrain_tmwater_days.apply(lambda row: 1 if str(row['RainfallStatus']).lower() == "lebat" or str(row['RainfallStatus']).lower() == "sangat lebat" else 0, axis=1)
-df_tmrain_tmwater_days
+df_tmrain_tmwater_days.to_csv("df_tmrain_tmwater_days.csv", index=False)
+if ENABLE_OUTPUT: df_tmrain_tmwater_days
 
 # Berapa banjir ya
 df_tmrain_tmwater_days["Banjir"].sum()
 
 # Bagaimana korelasi WaterLevel, Rainfall, dan Banjir?
 import seaborn as sb
-sb.heatmap(df_tmrain_tmwater_days[["Rainfall", "WaterLevel", "Banjir"]].corr(), cmap="Blues", annot=True)
+if ENABLE_OUTPUT: sb.heatmap(df_tmrain_tmwater_days[["Rainfall", "WaterLevel", "Banjir"]].corr(), cmap="Blues", annot=True)
 
-ax1 = df_tmrain_tmwater_days[df_tmrain_tmwater_days['Banjir'] == 1].plot(kind='scatter', x='Rainfall', y='WaterLevel', color='blue', alpha=0.5, figsize=(10, 7), logx=True, logy=True)
-df_tmrain_tmwater_days[df_tmrain_tmwater_days['Banjir'] == 0].plot(kind='scatter', x='Rainfall', y='WaterLevel', color='magenta', alpha=0.5, figsize=(10 ,7), ax=ax1, logx=True, logy=True)
-plt.legend(labels=['Banjir', 'Tidak Banjir'])
-plt.title('Relationship between Rainfall and WaterLevel', size=24)
-plt.xlabel('Rainfall (mm)', size=18)
-plt.ylabel('Waterlevel (cm)', size=18);
+if ENABLE_OUTPUT: 
+  ax1 = df_tmrain_tmwater_days[df_tmrain_tmwater_days['Banjir'] == 1].plot(kind='scatter', x='Rainfall', y='WaterLevel', color='blue', alpha=0.5, figsize=(10, 7), logx=True, logy=True)
+  df_tmrain_tmwater_days[df_tmrain_tmwater_days['Banjir'] == 0].plot(kind='scatter', x='Rainfall', y='WaterLevel', color='magenta', alpha=0.5, figsize=(10 ,7), ax=ax1, logx=True, logy=True)
+  plt.legend(labels=['Banjir', 'Tidak Banjir'])
+  plt.title('Relationship between Rainfall and WaterLevel', size=24)
+  plt.xlabel('Rainfall (mm)', size=18)
+  plt.ylabel('Waterlevel (cm)', size=18);
 
 """Tidak terlalu bagus untuk WaterLevel vs Banjir (Mungkin karena data tidak lengkap)
 
@@ -243,6 +248,11 @@ class Transformer:
   """
   def __init__(self):
     self.mapping_keys = {}
+    self.mapping_location = "transformer-map.json"
+
+  def load(self):
+    self.mapping_keys = json.load(open(self.mapping_location, "r"))
+    return self.mapping_location
 
   def fit_transform(self, df):
     columns = df.columns.values
@@ -270,8 +280,9 @@ class Transformer:
         df[column] = df.apply(lambda row: self.mapping_keys[column][row[column]], axis=1)
     return df
   
-  def save_mapping(self, location):
-    json.dump(self.mapping_keys, open(location, "w"))
+  def save_mapping(self):
+    json.dump(self.mapping_keys, open(self.mapping_location, "w"))
+    return self.mapping_location
 
 # Convert categorical data to mapping numbers
 
@@ -279,8 +290,9 @@ transformer = Transformer()
 df_banjir = transformer.fit_transform(df_tmrain_tmwater_days[["Location", "Rainfall", "Banjir"]])
 
 # Save banjir mapping
-banjir_mapping_location = "banjir-location-mapping.json" 
-transformer.save_mapping(banjir_mapping_location)
+banjir_mapping_location = transformer.save_mapping()
+
+
 
 # Training
 import numpy as np
@@ -309,7 +321,7 @@ clf.fit(X_train, y_train)
 pickle.dump(clf, open("models/mknn-predict-banjir.pkl", "wb"))
 
 accuracy = clf.score(X_test, y_test)
-print('Accuracy=', accuracy)
+if ENABLE_OUTPUT: print('Accuracy=', accuracy)
 
 # Predicting
 
@@ -325,7 +337,7 @@ def predict_banjir(input_value):
   print('Predictions', predictions)
   return predictions
 
-predict_banjir([["Cawang", 213.5],["Kampung Kelapa", 0],["Cawang", 213.5]])
+if ENABLE_OUTPUT: predict_banjir([["Cawang", 213.5],["Kampung Kelapa", 0],["Cawang", 213.5]])
 
 """## Rainfall Forecasting Model"""
 
@@ -347,12 +359,13 @@ for location in locations:
 
   # Plot data
   # plotting the data
-  plt.figure(figsize=(16, 8))
-  plt.title('Historical Rainfall data from %s'%location)
-  plt.plot(df["Date"],df['Rainfall'], color='red')
-  plt.xlabel('Date', fontsize=18)
-  plt.ylabel('Rainfall (mm)', fontsize=18)
-  # plt.show()
+  if ENABLE_OUTPUT: 
+    plt.figure(figsize=(16, 8))
+    plt.title('Historical Rainfall data from %s'%location)
+    plt.plot(df["Date"],df['Rainfall'], color='red')
+    plt.xlabel('Date', fontsize=18)
+    plt.ylabel('Rainfall (mm)', fontsize=18)
+    plt.show()
 
   # create new data frame with only 'Rainfall' column
   data = df[['Rainfall']]
@@ -394,35 +407,78 @@ for location in locations:
   valid['Predictions'] = forecast_set
 
   # visualization of the data
-  plt.figure(figsize=(16,8))
-  plt.title('Model %s, RMSE(%s)'%(location, rmse))
-  plt.xlabel('Date', fontsize=18)
-  plt.ylabel('Rainfall', fontsize=18)
-  # plt.plot(train['Rainfall'], linewidth=3.5)
-  plt.plot(df[trainning_data_len:]["Date"], valid[['Rainfall', 'Predictions']],  linewidth=3.5)
-  plt.legend(['Valid','Predictions'], loc='upper center')
-  # plt.show()
+  if ENABLE_OUTPUT: 
+    plt.figure(figsize=(16,8))
+    plt.title('Model %s, RMSE(%s)'%(location, rmse))
+    plt.xlabel('Date', fontsize=18)
+    plt.ylabel('Rainfall', fontsize=18)
+    # plt.plot(train['Rainfall'], linewidth=3.5)
+    plt.plot(df[trainning_data_len:]["Date"], valid[['Rainfall', 'Predictions']],  linewidth=3.5)
+    plt.legend(['Valid','Predictions'], loc='upper center')
+    plt.show()
 
   pickle.dump(clf, open("models/mreg-predict-banjir-%s.pkl"%location, "wb"))
 
 """# Usage In Cloud"""
 
-# Save model
+import pandas as pd
+import numpy as np
 import pickle
-a_model = "abcd"
-pickle.dump(a_model, open("model.pkl", "wb"))
-
-# Load model
-model = pickle.load(open("model.pkl", "rb"))
-
-
-def an_api():
-  # use model
-  output = model.predict("something")
-
-  return JsonResponse({"output": output})
-
+import json
 from datetime import timedelta
+
+class Transformer:
+  """Convert non numeric categorical data to numeric value
+  """
+  def __init__(self):
+    self.mapping_keys = {}
+    self.mapping_location = "transformer-map.json"
+
+  def load(self):
+    self.mapping_keys = json.load(open(self.mapping_location, "r"))
+    return self.mapping_location
+
+  def fit_transform(self, df):
+    columns = df.columns.values
+    self.mapping_keys = {}
+
+    for column in columns:
+      text_digit_vals = {}
+      if df[column].dtype != np.int64 and df[column].dtype != np.float64:
+        column_contents = df[column].values.tolist()
+        unique_elements = sorted(set(column_contents), key=lambda x: str(x))
+        x = 0
+        for unique in unique_elements:
+          if unique not in text_digit_vals:
+            text_digit_vals[unique] = x
+            x += 1
+        df[column] = df.apply(lambda row: text_digit_vals[row[column]], axis=1)
+        self.mapping_keys[column] = text_digit_vals
+
+      return df
+
+  def transform(self, df):
+    columns = df.columns.values
+    for column in columns:
+      if df[column].dtype != np.int64 and df[column].dtype != np.float64:
+        df[column] = df.apply(lambda row: self.mapping_keys[column][row[column]], axis=1)
+    return df
+  
+  def save_mapping(self):
+    json.dump(self.mapping_keys, open(self.mapping_location, "w"))
+    return self.mapping_location
+
+# Load datasheet
+df_tmrain_tmwater_days = pd.read_csv("df_tmrain_tmwater_days.csv")
+def get_rainfall_by_location(location, upto_date=None):
+  if upto_date:
+    return df_tmrain_tmwater_days[["Date", "Location", "Rainfall"]][df_tmrain_tmwater_days["Location"] == location].sort_values("Date")[df_tmrain_tmwater_days["Date"] <= upto_date]
+  return df_tmrain_tmwater_days[["Date", "Location", "Rainfall"]][df_tmrain_tmwater_days["Location"] == location].sort_values("Date")
+
+# load transfomer
+transformer = Transformer()
+banjir_mapping_location = transformer.load()
+
 # loads all models to memory for fast response
 ## classification model
 models = {}
@@ -481,7 +537,7 @@ def predict_banjir(location: str, future_days=1, after_date=None):
   input_value = []
   for i in range(future_days):
     input_value.append([location, forecast_set[i]])
-  print("input_value (scaled)=",input_value)
+  # if ENABLE_OUTPUT:  print("input_value (scaled)=",input_value)
   df_banjir_to_predict = pd.DataFrame(input_value, columns=["Location", "Rainfall"])
   df_banjir_to_predict = transformer.transform(df_banjir_to_predict)
   predictions = models['mknn-banjir'].predict(df_banjir_to_predict)
@@ -500,12 +556,12 @@ def predict_banjir(location: str, future_days=1, after_date=None):
   return output, ("prediction", "rmse", "forecasted_rainfall", "date")
 
 output, col_name = predict_banjir("Sumur Batu", future_days=3)
-pd.DataFrame(output, columns=col_name)
+if ENABLE_OUTPUT: pd.DataFrame(output, columns=col_name)
 
 # Kampung Kelapa before 2019-12-24
 
-df_tmrain_tmwater_days[df_tmrain_tmwater_days["Location"] == "Kampung Kelapa"].sort_values("Date")[df_tmrain_tmwater_days["Date"] <= "2019-12-24"].tail(10)
+if ENABLE_OUTPUT: df_tmrain_tmwater_days[df_tmrain_tmwater_days["Location"] == "Kampung Kelapa"].sort_values("Date")[df_tmrain_tmwater_days["Date"] <= "2019-12-24"].tail(10)
 
 output, out_name = predict_banjir("Kampung Kelapa", future_days=10, after_date="2019-12-14")
-pd.DataFrame(output, columns=out_name)
+if ENABLE_OUTPUT: pd.DataFrame(output, columns=out_name)
 
