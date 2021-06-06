@@ -11,4 +11,6 @@ PREDICT is our application solution to predict floods in Jakarta. Predict is a m
 * LinearRegression via Scikit-learn
 * Neural Netowork (Binary Classifier) via Keras
 
+The model with Keras is crazy big, 151 mb each model. That size times how much locations and preloaded that into memory, surely gonna blow the server. Because of that we decided to use the classification determining banjir or not banjir using tensorflow, whereas to predict regression of rain using simple linear regression.
+
 
